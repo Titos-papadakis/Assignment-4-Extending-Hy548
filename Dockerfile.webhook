@@ -1,0 +1,9 @@
+FROM python:3.9-slim
+
+RUN pip install flask jsonpatch
+
+COPY webhook_controller.py /controller.py
+
+EXPOSE 443
+
+CMD ["python", "/controller.py"]

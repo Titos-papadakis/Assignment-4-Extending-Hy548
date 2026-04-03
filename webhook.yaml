@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-controller
+  template:
+    metadata:
+      labels:
+        app: webhook-controller
+    spec:
+      containers:
+      - name: webhook
+        image: titoyannis/webhook-controller:v1
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: certs          
+          mountPath: "/certs"
+          readOnly: true
+      volumes:               
+      - name: certs          
+        secret:
+          secretName: webhook-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-service
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+  selector:
+    app: webhook-controller
