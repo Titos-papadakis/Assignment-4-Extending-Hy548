@@ -1,27 +1,87 @@
-1)
-a) εγκατάσταση του crd: kubectl apply -f fruit-crd.yaml
-b) δημιουργία αντικειμένου: kubectl apply -f my-apple.yaml
-c) επιβεβαίωση στοιχείων: kubectl get fruit apple -o yaml
-d) λίστα φρούτων: kubectl get fruits
+# Kubernetes Custom Resource Definitions (CRDs) & Dynamic Admission Controller
 
-2)
-a) build και push του image:
+An end-to-end Kubernetes governance and workload extension system built with custom CRDs, an event-driven Python controller (Kopf), and a TLS-secured dynamic admission webhook.
+
+---
+
+## 📌 Overview
+
+This project extends the native Kubernetes control plane by introducing:
+- **Custom Resource Definitions (CRDs)** to manage and automate custom lifecycle events directly via `kubectl`.
+- **Event-Driven Controller (Kopf)** running in Python under strictly scoped RBAC permissions to monitor and reconcile custom resources.
+- **Dynamic Admission Webhook** serving over HTTPS (port 443) using Flask to intercept and validate admission requests before persisting to `etcd`.
+
+---
+
+## 🏗 Architecture & Features
+
+- **RBAC Hardening:** Deployed using custom ServiceAccounts, Roles, and RoleBindings restricting the controller to authorized namespaces and verbs.
+- **SSL/TLS Termination:** Secure cluster communication via Kubernetes TLS Secrets containing X.509 certificates for the validating webhook.
+- **Containerization:** Multi-target container builds packaged for minimal attack surface and deployed as cluster workloads.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Deploy Custom Resource Definitions (CRDs)
+
+Apply the Custom Resource Definitions and create custom resources:
+
+```bash
+# Register the CRDs
+kubectl apply -f crd.yaml
+
+# Verify CRD status
+kubectl get crd
+
+# Deploy a custom resource manifest
+kubectl apply -f resource-manifest.yaml
+kubectl get crd-objects -o yaml
+```
+
+### 2. Deploy Controller with RBAC
+
+Build and run the Python reconciliation controller:
+
+```bash
+# Build & tag Docker image
 docker build -t titoyannis/fruit-controller:v1 .
-docker login
 docker push titoyannis/fruit-controller:v1
-b) εγκατάσταση Greeting CRD και ανάπτυξη του Controller:
+
+# Apply RBAC permissions and Controller deployment
 kubectl apply -f greeting-crd.yaml
 kubectl apply -f greeting-controller.yaml
-έλεγχος pod με kubectl get pods και logs με kubectl logs -l app=greeting-controller. είδα ότι έβγαλε Activity 'login_via_client' succeeded οπότε ο controller τρέχει κανονικά.
 
-3)
-a) αλλαγή κώδικα webhook_controller.py για ssl/443.
-build με το ειδικό dockerfile:
+# Inspect deployment status and streaming logs
+kubectl get pods -l app=greeting-controller
+kubectl logs -l app=greeting-controller -f
+```
+
+### 3. Deploy TLS Admission Webhook
+
+Set up the HTTPS validating webhook:
+
+```bash
+# Create TLS secret for webhook authentication
+kubectl create secret tls webhook-certs --cert=tls.crt --key=tls.key
+
+# Build and push the webhook container
 docker build -f Dockerfile.webhook -t titoyannis/webhook-controller:v1 .
 docker push titoyannis/webhook-controller:v1
-b) δημιουργία ssl secret:
-kubectl create secret tls webhook-certs --cert=tls.crt --key=tls.key
+
+# Deploy webhook service and registration manifest
 kubectl apply -f webhook.yaml
 
-verification:
-το pod είναι running και στα logs φαίνεται ότι ο flask σηκώθηκε σε https στην 443 (Running on https://0.0.0.0:443/).
+# Verify secure HTTPS listener on port 443
+kubectl get pods -l app=webhook-controller
+kubectl logs -l app=webhook-controller
+```
+
+---
+
+## 🛠 Tech Stack
+
+- **Orchestration:** Kubernetes (CRDs, Deployments, RBAC, Services, Secrets)
+- **Controller Framework:** Python, Kopf
+- **Admission Webhook:** Python, Flask, SSL/TLS (HTTPS :443)
+- **Containerization:** Docker, Dockerfile
